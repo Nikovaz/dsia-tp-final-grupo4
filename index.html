@@ -1443,15 +1443,7 @@
                 return;
             }
 
-            box.innerHTML = list.map(c => \`
-                <div class="comment-card">
-                    <div class="comment-meta">
-                        <strong style="color: var(--brand-orange)">\${c.author || 'Anónimo'}</strong>
-                        <span>\${c.timestamp || 'Ahora'}</span>
-                    </div>
-                    <div class="comment-body">\${c.text || ''}</div>
-                </div>
-            \`).join('');
+            box.innerHTML = list.map(c => '<div class="comment-card"><div class="comment-meta"><strong style="color: var(--brand-orange)">' + (c.author || 'Anónimo') + '</strong><span>' + (c.timestamp || 'Ahora') + '</span></div><div class="comment-body">' + (c.text || '') + '</div></div>').join('');
         }
 
         async function handleSendComment(e) {
@@ -1553,7 +1545,7 @@
                         ctx.beginPath();
                         ctx.moveTo(particles[i].x, particles[i].y);
                         ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.strokeStyle = \`rgba(6, 182, 212, \${(1 - dist / 130) * 0.16})\`;
+                        ctx.strokeStyle = 'rgba(6, 182, 212, ' + ((1 - dist / 130) * 0.16) + ')';
                         ctx.lineWidth = 0.8;
                         ctx.stroke();
                     }
@@ -1567,7 +1559,7 @@
                     ctx.beginPath();
                     ctx.moveTo(particles[i].x, particles[i].y);
                     ctx.lineTo(mouseX, mouseY);
-                    ctx.strokeStyle = \`rgba(249, 115, 22, \${(1 - mdist / 140) * 0.3})\`;
+                    ctx.strokeStyle = 'rgba(249, 115, 22, ' + ((1 - mdist / 140) * 0.3) + ')';
                     ctx.lineWidth = 1;
                     ctx.stroke();
                 }
