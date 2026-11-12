@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ El algoritmo no te banca los trapos — Experiencia Sci-Fi | Nico Galarza</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-void: #05070E;
+            --bg-card: rgba(13, 19, 36, 0.82);
+            --border-neon: rgba(0, 229, 255, 0.35);
+            --cyan: #00E5FF;
+            --cyan-glow: rgba(0, 229, 255, 0.5);
+            --amber: #FFB703;
+            --amber-glow: rgba(255, 183, 3, 0.45);
+            --coral: #FF0055;
+            --coral-glow: rgba(255, 0, 85, 0.5);
+            --purple: #9D4EDD;
+            --text-main: #FFFFFF;
+            --text-muted: #94A3B8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-void);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Interactive Matrix / Neural Canvas */
+        #neuralCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.65;
+        }
+
+        /* Scanlines Overlay */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            opacity: 0.35;
+        }
+
+        /* Top Navbar */
+        .top-navbar {
+            height: 64px;
+            background: rgba(5, 7, 14, 0.88);
+            border-bottom: 1px solid var(--border-neon);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            z-index: 50;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 4px 30px rgba(0, 229, 255, 0.08);
+        }
+
+        .brand-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-glitch {
+            background: linear-gradient(90deg, #00E5FF, #FF0055);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+        }
+
+        .badge-cat {
+            background: rgba(255, 183, 3, 0.12);
+            border: 1px solid var(--amber);
+            color: var(--amber);
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            box-shadow: 0 0 12px var(--amber-glow);
+        }
+
+        .controls-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slide-counter {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--cyan);
+            background: rgba(0, 229, 255, 0.08);
+            padding: 4px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-neon);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+        }
+
+        .btn {
+            background: rgba(13, 19, 36, 0.9);
+            border: 1px solid var(--border-neon);
+            color: var(--text-main);
+            padding: 7px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: rgba(0, 229, 255, 0.15);
+            box-shadow: 0 0 20px var(--cyan-glow);
+            transform: translateY(-1px);
+        }
+
+        .btn-active {
+            border-color: var(--coral) !important;
+            color: var(--coral) !important;
+            box-shadow: 0 0 15px var(--coral-glow) !important;
+        }
+
+        /* Slide Viewport */
+        .deck-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 40px 72px 40px;
+            z-index: 10;
+            perspective: 1200px;
+        }
+
+        .slide-wrapper {
+            position: absolute;
+            width: 95%;
+            max-width: 1280px;
+            opacity: 0;
+            transform: scale(0.92) rotateX(8deg) translateY(40px);
+            pointer-events: none;
+            transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .slide-wrapper.active {
+            opacity: 1;
+            transform: scale(1) rotateX(0deg) translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Cinema Slide Split Layout */
+        .cinema-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 28px;
+            align-items: stretch;
+        }
+
+        .cinema-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .cinema-visual {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border-neon);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 229, 255, 0.15);
+            min-height: 440px;
+            display: flex;
+            align-items: flex-end;
+            padding: 24px;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .cinema-visual:hover {
+            transform: scale(1.02);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9), 0 0 45px rgba(0, 229, 255, 0.3);
+        }
+
+        .cinema-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(5, 7, 14, 0.2) 0%, rgba(5, 7, 14, 0.85) 85%);
+            z-index: 1;
+        }
+
+        .cinema-caption {
+            position: relative;
+            z-index: 2;
+        }
+
+        .cinema-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--cyan);
+            background: rgba(0, 229, 255, 0.15);
+            padding: 3px 10px;
+            border-radius: 12px;
+            display: inline-block;
+            margin-bottom: 8px;
+            border: 1px solid rgba(0, 229, 255, 0.3);
+        }
+
+        .cinema-quote {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #FFFFFF;
+            line-height: 1.4;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+        }
+
+        /* Headers */
+        .slide-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--amber);
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slide-tag::before {
+            content: "▶";
+            font-size: 0.6rem;
+            color: var(--coral);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .slide-title {
+            font-size: 2.3rem;
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .slide-subtitle {
+            font-size: 1.05rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        /* Cards */
+        .hud-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-neon);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .hud-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--cyan);
+            box-shadow: 0 0 12px var(--cyan);
+        }
+
+        .hud-card-coral::before {
+            background: var(--coral);
+            box-shadow: 0 0 12px var(--coral);
+        }
+
+        .hud-card-amber::before {
+            background: var(--amber);
+            box-shadow: 0 0 12px var(--amber);
+        }
+
+        .hud-card:hover {
+            border-color: var(--cyan);
+            transform: translateX(4px);
+        }
+
+        .hud-card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #FFFFFF;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hud-card-body {
+            font-size: 0.95rem;
+            color: #CBD5E1;
+            line-height: 1.6;
+        }
+
+        .hud-quote {
+            background: rgba(255, 0, 85, 0.08);
+            border-left: 3px solid var(--coral);
+            padding: 14px 18px;
+            border-radius: 0 12px 12px 0;
+            font-style: italic;
+            font-size: 1.05rem;
+            color: #FFE4E6;
+            margin: 14px 0;
+            box-shadow: inset 0 0 20px rgba(255, 0, 85, 0.05);
+        }
+
+        /* Bottom Bar */
+        .bottom-bar {
+            height: 60px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(5, 7, 14, 0.94);
+            border-top: 1px solid var(--border-neon);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            z-index: 50;
+            backdrop-filter: blur(16px);
+        }
+
+        .key-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        kbd {
+            background: rgba(0, 229, 255, 0.08);
+            border: 1px solid var(--border-neon);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--cyan);
+            box-shadow: 0 0 8px rgba(0, 229, 255, 0.2);
+        }
+
+        /* Speech Drawer */
+        .speech-drawer {
+            position: fixed;
+            bottom: 60px;
+            left: 0;
+            width: 100%;
+            background: rgba(6, 9, 20, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 2px solid var(--amber);
+            padding: 22px 48px;
+            box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.9), 0 0 30px var(--amber-glow);
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 90;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .speech-drawer.open {
+            transform: translateY(0);
+        }
+
+        .speech-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .speech-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: var(--amber);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .speech-timing {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            background: rgba(255, 183, 3, 0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            color: var(--amber);
+            border: 1px solid var(--amber);
+            box-shadow: 0 0 10px var(--amber-glow);
+        }
+
+        .speech-text {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: #F8FAFC;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NEURAL PARTICLES CANVAS -->
+    <canvas id="neuralCanvas"></canvas>
+    <div class="scanlines"></div>
+
+    <!-- TOP NAVBAR -->
+    <header class="top-navbar">
+        <div class="brand-title">
+            <span class="brand-glitch">CYBERPUNK ESSAY</span>
+            <span style="color: #64748B;">//</span>
+            <span style="font-size: 0.85rem; font-family:'Plus Jakarta Sans'; font-weight:700;">Taller de Comunicación</span>
+            <span class="badge-cat">PROF. NATALIA CATÁN</span>
+        </div>
+
+        <div class="controls-area">
+            <div class="slide-counter">
+                SLIDE <span id="currentSlideNum">1</span> / <span id="totalSlidesNum">8</span>
+            </div>
+
+            <button class="btn" id="sfxToggleBtn" title="Activar/Desactivar efectos de sonido Sci-Fi">
+                🔊 SFX: ON
+            </button>
+
+            <button class="btn" id="toggleSpeechBtn">
+                🎙️ Guion Oral (G)
+            </button>
+
+            <button class="btn" id="fullscreenBtn" title="Pantalla Completa">
+                ⛶ Pantalla Completa
+            </button>
+        </div>
+    </header>
+
+    <!-- SLIDES CONTAINER -->
+    <main class="deck-container">
+
+        <!-- ============================================================== -->
+        <!-- SLIDE 1: PORTADA FUTURISTA                                    -->
+        <!-- ============================================================== -->
+        <section class="slide-wrapper active" id="slide-1" data-slide="1">
+            <div class="cinema-grid">
+                <div class="cinema-content">
+                    <div class="slide-tag">DEFENSA ORAL • TRABAJO FINAL ESCRITO</div>
+                    <h1 class="slide-title" style="font-size: 3.2rem; background: linear-gradient(135deg, #FFFFFF 40%, #00E5FF 80%, #FF0055 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        El algoritmo no te banca los trapos
+                    </h1>
+                    <div class="slide-subtitle" style="font-size: 1.25rem; color: var(--amber); font-weight: 600;">
+                        Por qué en la era de la Inteligencia Artificial vale el doble ser bien humano
+                    </div>
+
+                    <div class="hud-card hud-card-amber">
+                        <div class="hud-card-title">
+                            <span>👤 Nicolás Marcelo Galarza Vázquez</span>
+                        </div>
+                        <div class="hud-card-body">
+                            Tecnicatura Superior en Ciencia de Datos e Inteligencia Artificial • IFTS N° 24<br>
+                            <span style="color: var(--cyan); font-size: 0.85rem; font-family: 'JetBrains Mono';">
+                                Eje: Bradbury, Teoría Sintérgica, deshumanización algorítmica y valor empático.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cinema-visual" style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80');">
+                    <div class="cinema-overlay"></div>
+                    <div class="cinema-caption">
+                        <span class="cinema-tag">IA & CONSCIENCIA</span>
+                        <div class="cinema-quote">“¿A quién le habla la tecnología cuando no hay nadie del otro lado?”</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SLIDE 2: BRADBURY (1950) Y LA CASA VACÍA                      -->
+        <!-- ============================================================== -->
+        <section class="slide-wrapper" id="slide-2" data-slide="2">
+            <div class="cinema-grid">
+                <div class="cinema-content">
+                    <div class="slide-tag">1. MARCO DE INICIO • LITERATURA VISIONARIA</div>
+                    <h2 class="slide-title">La profecía de Bradbury (1950)</h2>
+                    <div class="slide-subtitle">El cuento «Vendrán lluvias suaves» y la casa que le habla a la nada</div>
+
+                    <div class="hud-card">
+                        <div class="hud-card-title">🤖 La Casa Automatizada en el Año 2026</div>
+                        <div class="hud-card-body">
+                            Prepara el desayuno, barre los pisos con ratones mecánicos y lee poesía a las diez de la noche... pero la familia murió en una catástrofe bélica. La máquina funciona en milisegundos, pero le habla al vacío.
+                        </div>
+                    </div>
+
+                    <div class="hud-card hud-card-coral">
+                        <div class="hud-card-title">⚠️ El Paralelo con el Presente</div>
+                        <div class="hud-card-body">
+                            Setenta y seis años después, llenamos el mundo de sistemas hiperconectados que responden al instante pero carecen de propósito vital. Eficiencia técnica sin presencia humana es un monumento estéril a la soledad.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cinema-visual" style="background-image: url('https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1200&q=80');">
+                    <div class="cinema-overlay"></div>
+                    <div class="cinema-caption">
+                        <span class="cinema-tag">RAY BRADBURY (1950)</span>
+                        <div class="cinema-quote">“La voz continuó leyendo el poema hasta que el fuego devoró los circuitos de la casa vacía.”</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SLIDE 3: LA TRAMPA DE LA AUTOMATIZACIÓN MIOPE                -->
+        <!-- ============================================================== -->
+        <section class="slide-wrapper" id="slide-3" data-slide="3">
+            <div class="cinema-grid">
+                <div class="cinema-content">
+                    <div class="slide-tag">2. DIAGNÓSTICO ÉTICO Y SOCIAL</div>
+                    <h2 class="slide-title">La trampa de volvernos robots</h2>
+                    <div class="slide-subtitle">El verdadero peligro no es que la máquina sienta, sino que nosotros dejemos de sentir</div>
+
+                    <div class="hud-card hud-card-amber">
+                        <div class="hud-card-title">❌ El Temor Equivocado</div>
+                        <div class="hud-card-body">
+                            El debate mediático se gasta en el pánico de que la IA 'cobre conciencia' o nos domine militarmente. Ese no es el peligro urgente de hoy.
+                        </div>
+                    </div>
+
+                    <div class="hud-card hud-card-coral">
+                        <div class="hud-card-title">🔥 El Peligro Real y Urgente</div>
+                        <div class="hud-card-body">
+                            El riesgo real es que nosotros, por perseguir la inmediatez y recortar costos, nos volvamos fríos, mecánicos y predecibles como un algoritmo.
+                        </div>
+                    </div>
+
+                    <div class="hud-card">
+                        <div class="hud-card-title">🧊 Enfriamiento Social</div>
+                        <div class="hud-card-body">
+                            Relaciones cada vez más transaccionales, impaciencia crónica y textos con aroma a plástico prefabricado.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cinema-visual" style="background-image: url('https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80');">
+                    <div class="cinema-overlay"></div>
+                    <div class="cinema-caption">
+                        <span class="cinema-tag">MATRIX HUMANA</span>
+                        <div class="cinema-quote">“No le temas a una máquina que piense como humano; témele al humano que empiece a actuar como máquina.”</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SLIDE 4: LA FALSA EMPATÍA DE LOS BOTS                         -->
+        <!-- ============================================================== -->
+        <section class="slide-wrapper" id="slide-4" data-slide="4">
+            <div class="cinema-grid">
+                <div class="cinema-content">
+                    <div class="slide-tag">3. LA HIPOCRESÍA DEL TONO PROGRAMADO</div>
+                    <h2 class="slide-title">Atención al cliente vs. Empatía real</h2>
+                    <div class="slide-subtitle">La simpatía pasteurizada de los bots no reemplaza el compromiso humano</div>
+
+                    <div class="hud-quote">
+                        “¡Hola Nico! ¡Lamento mucho el inconveniente! Tu tranquilidad es nuestra prioridad 💙🙏”<br>
+                        <span style="font-size: 0.85rem; color: var(--text-muted); font-style: normal; display: block; margin-top: 6px;">
+                            — El bot corporativo que se resetea al menú inicial apenas el caso se sale del libreto.
+                        </span>
+                    </div>
+
+                    <div class="hud-card hud-card-coral">
+                        <div class="hud-card-title">💔 La Empatía No se Programa</div>
+                        <div class="hud-card-body">
+                            El bot no siente culpa ni compasión; ejecuta un guion estadístico. Esa amabilidad de cotillón genera violencia sorda en el usuario cuando necesita una solución de verdad.
+                        </div>
+                    </div>
+
+                    <div class="hud-card">
+                        <div class="hud-card-title">🤝 Poner el Cuerpo y Escuchar</div>
+                        <div class="hud-card-body">
+                            El valor humano irreemplazable es hacerse cargo: mirar a los ojos, pedir disculpas sinceras, tolerar la frustración del otro y resolver con criterio ético.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cinema-visual" style="background-image: url('https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80');">
+                    <div class="cinema-overlay"></div>
+                    <div class="cinema-caption">
+                        <span class="cinema-tag">SAMANTHA / JOI</span>
+                        <div class="cinema-quote">“La máquina imita el tono del amor y la compasión, pero jamás podrá pagar el precio de sentirlo.”</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SLIDE 5: EL FIN DEL PROGRAMADOR ERMITAÑO                      -->
+        <!-- ============================================================== -->
+        <section class="slide-wrapper" id="slide-5" data-slide="5">
+            <div class="cinema-grid">
+                <div class="cinema-content">
+                    <div class="slide-tag">4. TRANSFORMACIÓN DEL ROL PROFESIONAL</div>
+                    <h2 class="slide-title">El fin del llanero solitario del código</h2>
+                    <div class="slide-subtitle">Cuando la técnica se vuelve accesible para todos, el valor se traslada a la comunicación</div>
+
+                    <div class="hud-card">
+                        <div class="hud-card-title">⌨️ El Paradigma Superado</div>
+                        <div class="hud-card-body">
+                            Antes bastaba con escribir miles de líneas de código críptico encerrado sin hablar con nadie para tener valor asegurado. Hoy cualquier LLM escribe código, scripts y funciones en cinco segundos.
+                        </div>
+                    </div>
+
+                    <div class="hud-card hud-card-amber">
+                        <div class="hud-card-title">💡 El Nuevo Valor Diferencial</div>
+                        <div class="hud-card-body">
+                            • <strong>Escucha activa:</strong> entender qué le duele realmente al cliente o a la pyme.<br>
+                            • <strong>Data Storytelling:</strong> traducir números fríos a decisiones humanas.<br>
+                            • <strong>Criterio ético:</strong> saber dónde termina la máquina y dónde empieza la persona.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cinema-visual" style="background-image: url('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80');">
+                    <div class="cinema-overlay"></div>
+                    <div class="cinema-caption">
+                        <span class="cinema-tag">CODING EVOLUTION</span>
+                        <div class="cinema-quote">“La técnica se volvió un commodity. La empatía, el criterio y la palabra son el nuevo superpoder.”</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SLIDE 6: EL POEMA DE SAN TELMO (ONTOLOGÍA)                    -->
+        <!-- ============================================================== -->
+        <section class="slide-wrapper" id="slide-6" data-slide="6">
+            <div class="cinema-grid">
+                <div class="cinema-content">
+                    <div class="slide-tag">5. LA DIFERENCIA ONTOLÓGICA</div>
+                    <h2 class="slide-title">Cálculo estadístico vs. Experiencia viva</h2>
+                    <div class="slide-subtitle">La inteligencia artificial procesa tokens; el ser humano siente en la piel</div>
+
+                    <div class="hud-card hud-card-coral">
+                        <div class="hud-card-title">🌧️ El Ejemplo de San Telmo Bajo la Lluvia</div>
+                        <div class="hud-card-body">
+                            Si a un modelo le pedís un poema de desamor en San Telmo, va a rimar <em>«faroles»</em>, <em>«lágrimas»</em> y <em>«ausencia»</em> con métrica admirable.<br><br>
+                            Pero la máquina jamás se enamoró, jamás caminó con los zapatos empapados esquivando charcos en avenida Independencia, ni sintió el nudo en la garganta al despedirse de alguien en la parada del colectivo.
+                        </div>
+                    </div>
+
+                    <div class="hud-quote" style="border-color: var(--amber); background: rgba(255, 183, 3, 0.08); color: #FEF3C7;">
+                        “Nosotros no procesamos datos: los habitamos. Esa es la trinchera biológica que ningún algoritmo podrá cruzar jamás.”
+                    </div>
+                </div>
+
+                <div class="cinema-visual" style="background-image: url('https://images.unsplash.com/photo-1519692933481-e162a57d6721?auto=format&fit=crop&w=1200&q=80');">
+                    <div class="cinema-overlay"></div>
+                    <div class="cinema-caption">
+                        <span class="cinema-tag">SAN TELMO CYBERPUNK</span>
+                        <div class="cinema-quote">“El algoritmo calcula probabilidades de palabras. Nosotros cargamos con la cicatriz de haberlo vivido.”</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SLIDE 7: BANCAR LOS TRAPOS (EL MATE VS ERROR 404)             -->
+        <!-- ============================================================== -->
+        <section class="slide-wrapper" id="slide-7" data-slide="7">
+            <div class="cinema-grid">
+                <div class="cinema-content">
+                    <div class="slide-tag">6. COMPROMISO AFECTIVO Y COMUNITARIO</div>
+                    <h2 class="slide-title">¿Por qué el algoritmo no te banca los trapos?</h2>
+                    <div class="slide-subtitle">En las malas de verdad, la máquina tira error 404 y se apaga</div>
+
+                    <div class="hud-card hud-card-coral">
+                        <div class="hud-card-title">⚠️ El Límite de la Máquina</div>
+                        <div class="hud-card-body">
+                            El sistema funciona mientras todo responda a parámetros cómodos. Si el negocio entra en quiebra o la vida duele, el servidor tira 404 y te deja en banda. No hay lealtad en el silicio.
+                        </div>
+                    </div>
+
+                    <div class="hud-card hud-card-amber">
+                        <div class="hud-card-title">🧉 Bancar los Trapos: La Virtud Humana</div>
+                        <div class="hud-card-body">
+                            Expresión criolla que resume el compromiso incondicional: quedarse al lado del otro cuando las papas queman. Mirar a los ojos, sostener el error y compartir un mate en silencio.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cinema-visual" style="background-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80');">
+                    <div class="cinema-overlay"></div>
+                    <div class="cinema-caption">
+                        <span class="cinema-tag">LATTICE & CAMPO NEURONAL</span>
+                        <div class="cinema-quote">“Ningún algoritmo cuántico te va a bancar los trapos jamás. La lealtad y el abrazo son territorio indelegable.”</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SLIDE 8: CONCLUSIÓN Y CIERRE                                  -->
+        <!-- ============================================================== -->
+        <section class="slide-wrapper" id="slide-8" data-slide="8">
+            <div class="cinema-grid">
+                <div class="cinema-content">
+                    <div class="slide-tag">7. SÍNTESIS Y CONCLUSIÓN FINAL</div>
+                    <h2 class="slide-title" style="font-size: 2.8rem; background: linear-gradient(135deg, #FFFFFF, #FFB703); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        El futuro pertenece a los que sigan siendo humanos
+                    </h2>
+                    <div class="slide-subtitle" style="color: var(--cyan); font-size: 1.15rem;">
+                        Hacia una integración armónica entre automatización y calidez empática
+                    </div>
+
+                    <div class="hud-quote" style="border-color: var(--cyan); background: rgba(0, 229, 255, 0.08); color: #E0F2FE; font-size: 1.25rem;">
+                        “En un mundo saturado de respuestas automáticas, ser profundamente humano vale el doble.”
+                    </div>
+
+                    <div class="hud-card hud-card-amber">
+                        <div class="hud-card-body">
+                            • Usemos la IA para quitarnos de encima lo repetitivo, lo pesado y los cálculos tediosos.<br>
+                            • Pero recuperemos ese tiempo libre para lo que jamás podrá programarse: la ternura, la escucha sincera y el mate compartido.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cinema-visual" style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80');">
+                    <div class="cinema-overlay"></div>
+                    <div class="cinema-caption">
+                        <span class="cinema-tag">GRACIAS POR SU ATENCIÓN</span>
+                        <div class="cinema-quote">Nicolás Marcelo Galarza Vázquez<br><span style="font-size: 0.9rem; font-weight:400; color:var(--text-muted);">Espacio abierto para preguntas y debate.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- SPEECH DRAWER -->
+    <div class="speech-drawer" id="speechDrawer">
+        <div class="speech-header">
+            <div class="speech-title">
+                🎙️ GUION ORAL DE APOYO • SLIDE <span id="speechSlideNum">1</span>
+            </div>
+            <div class="speech-timing" id="speechTiming">0:00 - 1:00</div>
+        </div>
+        <div class="speech-text" id="speechText">
+            Buenas tardes profe, buenas tardes compañeros. En 1950, Ray Bradbury escribió un cuento maravilloso que se llama 'Vendrán lluvias suaves'...
+        </div>
+    </div>
+
+    <!-- BOTTOM CONTROLS -->
+    <footer class="bottom-bar">
+        <div class="key-hint">
+            <span>Navegar:</span>
+            <kbd>←</kbd> <kbd>→</kbd> <kbd>Espacio</kbd>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button class="btn" id="prevBtn">← Anterior</button>
+            <button class="btn" id="nextBtn">Siguiente →</button>
+        </div>
+
+        <div class="key-hint">
+            <span>Guion:</span>
+            <kbd>G</kbd>
+            <span style="margin-left: 8px;">Efectos:</span>
+            <kbd>S</kbd>
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. SLIDES LOGIC & SPEECH DATA ---
+        const slides = document.querySelectorAll('.slide-wrapper');
+        const totalSlides = slides.length;
+        let currentSlide = 1;
+        let sfxEnabled = true;
+
+        const speechData = {
+            "1": {
+                "timing": "0:00 - 1:00",
+                "speech": "Buenas tardes profe, buenas tardes compañeros. En 1950, Ray Bradbury escribió un cuento maravilloso llamado 'Vendrán lluvias suaves'. Imaginaba una casa futurista totalmente automatizada que preparaba el desayuno, limpiaba los pisos y leía poesía en voz alta a las diez de la noche... pero la casa estaba completamente vacía: la familia había muerto en una guerra y la máquina le hablaba a la nada misma. Setenta y seis años después, siento que estamos cometiendo exactamente el mismo error: sistemas hiperconectados que responden en milisegundos, pero que le hablan a un vacío humano absoluto."
+            },
+            "2": {
+                "timing": "1:00 - 1:45",
+                "speech": "Bradbury no le temía a los circuitos ni a los cables; le temía a la desolación de construir herramientas que sigan funcionando sin ningún propósito vital. La pulcritud técnica no equivale a sentido. Si automatizamos para hablarle a la nada, la tecnología se convierte en un monumento a la soledad."
+            },
+            "3": {
+                "timing": "1:45 - 2:30",
+                "speech": "Yo estudio Ciencia de Datos y trabajo todos los días con automatizaciones. Me fascina la tecnología. Pero veo una trampa colectico: siempre se debate con pánico si la IA va a cobrar conciencia o quitarnos el trabajo. Para mí, el verdadero peligro urgente es otro: no es que las máquinas se vuelvan humanas, sino que nosotros, para competir con ellas, nos volvamos fríos, mecánicos y predecibles como un algoritmo."
+            },
+            "4": {
+                "timing": "2:30 - 3:15",
+                "speech": "Todos lo sufrimos a diario: entrás a una app o a un banco y te atiende un bot que te encaja corazoncitos, manitos rezando y te dice: '¡Hola Nico! ¡Tu tranquilidad es nuestra prioridad!'. Pero cuando tu problema se sale medio milímetro de lo previsto, se resetea y vuelve al inicio. La empatía no se programa; la empatía exige poner el cuerpo, escuchar y hacerse cargo."
+            },
+            "5": {
+                "timing": "3:15 - 4:00",
+                "speech": "Y esto cambia nuestro rol profesional. El mito del programador ermitaño que tiraba código encerrado sin hablar con nadie se murió. Hoy cualquier IA escribe código en cinco segundos. Lo que la máquina no puede hacer es escuchar con paciencia el dolor de un cliente, negociar con sensibilidad o entender el contexto humano."
+            },
+            "6": {
+                "timing": "4:00 - 4:45",
+                "speech": "La máquina no sabe de qué habla. Si le pedís un poema sobre el desamor en San Telmo bajo la lluvia, va a rimar 'faroles' y 'ausencia' con métrica perfecta. Pero jamás se enamoró, jamás caminó con los zapatos empapados esquivando charcos en avenida Independencia, ni sintió el nudo en la garganta al despedirse en una parada de colectivo. Nosotros no procesamos datos: los habitamos."
+            },
+            "7": {
+                "timing": "4:45 - 5:30",
+                "speech": "Por eso titulé este ensayo con una expresión popular nuestra: 'bancar los trapos'. Bancar los trapos es quedarse al lado del otro cuando las papas queman. Ningún algoritmo cuántico te va a bancar los trapos jamás. Si el negocio falla o la vida duele, tira error 404 y se apaga. La lealtad, el mate compartido y el abrazo a tiempo son territorios indelegables."
+            },
+            "8": {
+                "timing": "5:30 - 6:00",
+                "speech": "Como conclusión: usemos la Inteligencia Artificial para quitarnos de encima lo repetitivo y lo pesado, pero recuperemos ese tiempo libre para lo que jamás podrá programarse: la ternura, la escucha y el encuentro real. En un mundo saturado de respuestas automáticas, ser profundamente humano vale el doble. Muchas gracias."
+            }
+        };
+
+        document.getElementById('totalSlidesNum').innerText = totalSlides;
+
+        // --- 2. SYNTHESIZED SCI-FI AUDIO FX (Zero latency, works offline) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSciFiChime(frequency = 600, duration = 0.15) {
+            if (!sfxEnabled || !audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(frequency * 1.5, audioCtx.currentTime + duration);
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        function playSciFiWoosh() {
+            if (!sfxEnabled || !audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.25);
+            } catch(e) {}
+        }
+
+        function showSlide(num) {
+            if (num < 1 || num > totalSlides) return;
+            currentSlide = num;
+
+            slides.forEach(s => s.classList.remove('active'));
+            document.getElementById(`slide-${num}`).classList.add('active');
+
+            document.getElementById('currentSlideNum').innerText = num;
+            document.getElementById('speechSlideNum').innerText = num;
+
+            if (speechData[num]) {
+                document.getElementById('speechTiming').innerText = speechData[num].timing;
+                document.getElementById('speechText').innerText = speechData[num].speech;
+            }
+
+            playSciFiChime(440 + num * 40, 0.2);
+        }
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            showSlide(currentSlide + 1);
+        });
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            showSlide(currentSlide - 1);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+                showSlide(currentSlide + 1);
+            } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                showSlide(currentSlide - 1);
+            } else if (e.key.toLowerCase() === 'g') {
+                document.getElementById('speechDrawer').classList.toggle('open');
+                playSciFiWoosh();
+            } else if (e.key.toLowerCase() === 's') {
+                toggleSFX();
+            } else if (e.key === 'F11') {
+                toggleFullscreen();
+            }
+        });
+
+        document.getElementById('toggleSpeechBtn').addEventListener('click', () => {
+            document.getElementById('speechDrawer').classList.toggle('open');
+            playSciFiWoosh();
+        });
+
+        function toggleSFX() {
+            sfxEnabled = !sfxEnabled;
+            const btn = document.getElementById('sfxToggleBtn');
+            btn.innerText = sfxEnabled ? "🔊 SFX: ON" : "🔇 SFX: OFF";
+            btn.classList.toggle('btn-active', !sfxEnabled);
+            if (sfxEnabled) playSciFiChime(800, 0.1);
+        }
+
+        document.getElementById('sfxToggleBtn').addEventListener('click', toggleSFX);
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+
+        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+
+        // --- 3. DYNAMIC NEURAL CANVAS ANIMATION ---
+        const canvas = document.getElementById('neuralCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.8;
+                this.vy = (Math.random() - 0.5) * 0.8;
+                this.radius = Math.random() * 2 + 1;
+                this.color = Math.random() > 0.4 ? 'rgba(0, 229, 255,' : (Math.random() > 0.5 ? 'rgba(255, 183, 3,' : 'rgba(255, 0, 85,');
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + '0.7)';
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 55; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateCanvas() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw connecting lines
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 130) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        const alpha = (1 - dist / 130) * 0.25;
+                        ctx.strokeStyle = `rgba(0, 229, 255, ${alpha})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            requestAnimationFrame(animateCanvas);
+        }
+        animateCanvas();
+
+        // Init
+        showSlide(1);
+    </script>
+</body>
+</html>
